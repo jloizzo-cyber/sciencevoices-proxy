@@ -18,7 +18,14 @@ def chat_proxy():
             "Content-Type": "application/json"
         }
         payload = request.get_json(force=True)
-        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        r = requests.post(
+    "https://api.openai.com/v1/chat/completions",
+    headers=headers,
+    json=payload,
+    timeout=60  # prevent hanging
+)
+# Ensure no streaming mode (stream=True can hang)
+payload.pop("stream", None)
         return (r.text, r.status_code, {"Content-Type": "application/json"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
