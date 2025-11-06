@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os, requests
 
 app = Flask(__name__)
+CORS(app)
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 @app.route("/v1/chat/completions", methods=["POST"])
