@@ -3,7 +3,10 @@ from flask_cors import CORS
 import os, requests
 
 app = Flask(__name__)
-CORS(app)
+from flask_cors import cross_origin
+
+# Allow all domains or specify your domain:
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
