@@ -1,41 +1,44 @@
+import os
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, requests
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-@app.route("/v1/chat/completions", methods=["POST"])
-def chat_proxy():
+@app.get("/")
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "SciVoices Proxy running"}, 200
+
+@app.post("/v1/chat/completions")
+def chat_completions():
+    if not OPENAI_API_KEY:
+        return jsonify({"error": "OPENAI_API_KEY missing on server"}), 500
+
     try:
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        payload = request.json
+        if payload is None:
+            return jsonify({"error": "Invalid JSON body"}), 400
 
-        payload = request.get_json(force=True)
-
-        # prevent hanging: remove stream param and add timeout
-        payload.pop("stream", None)
-        r = requests.post(
+        response = requests.post(
             "https://api.openai.com/v1/chat/completions",
-            headers=headers,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+            },
             json=payload,
-            timeout=60
+            timeout=25,
         )
+        return jsonify(response.json()), response.status_code
 
-        return (r.text, r.status_code, {"Content-Type": "application/json"})
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "OpenAI request timed out"}), 504
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/")
-def home():
-    return "ScienceVoices proxy running."
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    app.run(host="0.0.0.0", port=5000)
